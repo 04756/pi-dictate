@@ -27,6 +27,7 @@ type StopAction = "insert" | "send";
 type ControllerOptions = {
   onModeChange(mode: DictateMode, ctx: ExtensionContext | undefined): void;
   onRecord(record: DictationRecord): void;
+  onMessage(record: DictationRecord, ctx: ExtensionContext): void;
   notify(ctx: ExtensionContext | undefined, message: string, type?: "info" | "warning" | "error"): void;
   sendUserMessage(ctx: ExtensionContext, text: string): void;
 };
@@ -136,6 +137,7 @@ export const createController = (options: ControllerOptions) => {
           rewriteError,
         } satisfies DictationRecord;
         options.onRecord(record);
+        options.onMessage(record, ctx);
 
         if (rewriteFailed) {
           const current = ctx.ui.getEditorText();

@@ -3,6 +3,7 @@ import { CONFIG_PATH, loadConfig } from "./config";
 import { createController, type DictationRecord } from "./core/controller";
 import { formatDoctorResults, runDoctor } from "./doctor";
 import { renderServerPresets } from "./server-presets";
+import { createDictationRenderer } from "./ui/renderer";
 import { createDictateEditorFactory, createInputIndicator } from "./ui/editor";
 import { formatError } from "./utils";
 
@@ -37,11 +38,24 @@ export default function piDictateExtension(pi: ExtensionAPI) {
   const inputIndicator = createInputIndicator(config.keybind);
   let lastRecord: DictationRecord | undefined;
 
+  pi.registerMessageRenderer("pi-dictate", createDictationRenderer());
+
   const controller = createController({
     onModeChange: (mode) => inputIndicator.setMode(mode),
     onRecord: (record) => {
       lastRecord = record;
       pi.appendEntry("pi-dictate", record);
+    },
+    onMessage: (record, ctx) => {
+      pi.sendMessage(
+        {
+          customType: "pi-dictate",
+          content: `Dictation: ${record.corrected || "(empty)"}`,
+          display: true,
+          details: { raw: record.raw, corrected: record.corrected, timings: record.timings, rewriteFailed: record.rewriteFailed, rewriteError: record.rewriteError },
+        },
+        { triggerTurn: false },
+      );
     },
     notify,
     sendUserMessage: (ctx, text) => {
