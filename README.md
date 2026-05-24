@@ -141,7 +141,9 @@ Example:
     "maxSeconds": 120
   },
   "rewrite": {
-    "maxTokens": 1000
+    "maxTokens": 1000,
+    "temperature": 0,
+    "reasoning": "low"
   }
 }
 ```
@@ -159,6 +161,13 @@ Environment variables override the config file:
 | `PI_DICTATE_INPUT` | `:0` | ffmpeg input device |
 | `PI_DICTATE_MAX_SECONDS` | `120` | Maximum recording duration |
 | `PI_DICTATE_REWRITE_MAX_TOKENS` | `1000` | Max tokens for rewrite call |
+
+Config file rewrite overrides:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `rewrite.temperature` | number | Override rewrite temperature per-provider default |
+| `rewrite.reasoning` | string | Override rewrite reasoning level (`minimal`/`low`/`medium`/`high`/`xhigh`)
 
 ## Security and privacy
 

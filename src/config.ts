@@ -15,6 +15,10 @@ export type DictateConfig = {
   maxSeconds: number;
   minBytes: number;
   rewriteMaxTokens: number;
+  /** Optional override: temperature for the rewrite call (provider-dependent) */
+  rewriteTemperature?: number;
+  /** Optional override: reasoning level for the rewrite call (provider-dependent) */
+  rewriteReasoning?: string;
 };
 
 export const CONFIG_PATH = join(homedir(), ".pi-dictate", "config.json");
@@ -37,6 +41,8 @@ type ConfigFile = {
   };
   rewrite?: {
     maxTokens?: number;
+    temperature?: number;
+    reasoning?: string;
   };
 };
 
@@ -77,6 +83,8 @@ const parseConfigFile = (value: unknown): ConfigFile => {
     },
     rewrite: {
       maxTokens: optionalPositiveInteger(rewrite.maxTokens),
+    temperature: typeof rewrite.temperature === "number" ? rewrite.temperature : undefined,
+    reasoning: optionalString(rewrite.reasoning),
     },
   };
 };
@@ -110,5 +118,7 @@ export const loadConfig = (): DictateConfig => {
     maxSeconds: integerFromEnv("PI_DICTATE_MAX_SECONDS", file.audio?.maxSeconds ?? 120),
     minBytes: integerFromEnv("PI_DICTATE_MIN_BYTES", file.audio?.minBytes ?? 4096),
     rewriteMaxTokens: integerFromEnv("PI_DICTATE_REWRITE_MAX_TOKENS", file.rewrite?.maxTokens ?? 1000),
+    rewriteTemperature: file.rewrite?.temperature,
+    rewriteReasoning: file.rewrite?.reasoning,
   };
 };

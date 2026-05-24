@@ -2,6 +2,7 @@ import { completeSimple } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { DictateConfig } from "../config";
 import { textFromAssistantContent } from "../utils";
+import { getRewriteParamsForProvider, type RewriteParams } from "./rewrite-params";
 
 const SYSTEM_PROMPT = `You rewrite speech-to-text transcripts before they are sent to a coding agent.
 
@@ -20,6 +21,12 @@ export const rewriteTranscript = async (transcript: string, ctx: ExtensionContex
   const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
   if (!auth.ok) throw new Error(auth.error);
 
+  const rewriteParams: RewriteParams = {
+    ...getRewriteParamsForProvider(model.provider),
+    ...(config.rewriteTemperature !== undefined ? { temperature: config.rewriteTemperature } : {}),
+    ...(config.rewriteReasoning !== undefined ? { reasoning: config.rewriteReasoning as RewriteParams["reasoning"] } : {}),
+  };
+
   const response = await completeSimple(
     model,
     {
@@ -37,6 +44,7 @@ export const rewriteTranscript = async (transcript: string, ctx: ExtensionContex
       headers: auth.headers,
       maxTokens: config.rewriteMaxTokens,
       signal: ctx.signal,
+      ...rewriteParams,
     },
   );
 
