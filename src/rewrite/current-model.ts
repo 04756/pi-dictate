@@ -37,7 +37,6 @@ export const rewriteTranscript = async (transcript: string, ctx: ExtensionContex
       headers: auth.headers,
       maxTokens: config.rewriteMaxTokens,
       signal: ctx.signal,
-      reasoning: "minimal",
     },
   );
 
