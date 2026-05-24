@@ -36,7 +36,6 @@ export const rewriteTranscript = async (transcript: string, ctx: ExtensionContex
       apiKey: auth.apiKey,
       headers: auth.headers,
       maxTokens: config.rewriteMaxTokens,
-      temperature: 0,
       signal: ctx.signal,
       reasoning: "minimal",
     },
