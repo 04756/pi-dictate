@@ -1,4 +1,4 @@
-import { CustomEditor, type ExtensionContext, type KeybindingsManager, type Theme } from "@earendil-works/pi-coding-agent";
+import { CustomEditor, type AppKeybinding, type ExtensionContext, type KeybindingsManager, type Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth, visibleWidth, type EditorComponent, type EditorTheme, type KeyId, type TUI } from "@earendil-works/pi-tui";
 import type { DictateMode } from "../core/controller";
 
@@ -29,6 +29,11 @@ class DictateEditorWrapper implements EditorComponent {
   onSubmit?: (text: string) => void;
   onChange?: (text: string) => void;
   borderColor?: (str: string) => string;
+  actionHandlers: Map<AppKeybinding, () => void> = new Map();
+  onEscape?: () => void;
+  onCtrlD?: () => void;
+  onPasteImage?: () => void;
+  onExtensionShortcut?: (data: string) => boolean;
 
   constructor(
     private readonly base: EditorComponent,
@@ -43,6 +48,22 @@ class DictateEditorWrapper implements EditorComponent {
     else delete this.base.onChange;
 
     if (this.borderColor) this.base.borderColor = this.borderColor;
+
+    const base = this.base as EditorComponent & {
+      actionHandlers?: Map<AppKeybinding, () => void>;
+      onEscape?: () => void;
+      onCtrlD?: () => void;
+      onPasteImage?: () => void;
+      onExtensionShortcut?: (data: string) => boolean;
+    };
+    if (base.actionHandlers instanceof Map) {
+      base.actionHandlers.clear();
+      for (const [action, handler] of this.actionHandlers) base.actionHandlers.set(action, handler);
+      base.onEscape = this.onEscape;
+      base.onCtrlD = this.onCtrlD;
+      base.onPasteImage = this.onPasteImage;
+      base.onExtensionShortcut = this.onExtensionShortcut;
+    }
   }
 
   get focused(): boolean {
