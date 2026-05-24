@@ -1,0 +1,97 @@
+import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { loadConfig } from "./config";
+import { createController, type DictationRecord } from "./core/controller";
+import { createDictateEditorFactory, createInputIndicator } from "./ui/editor";
+import { formatError } from "./utils";
+
+const notify = (ctx: ExtensionContext | undefined, message: string, type: "info" | "warning" | "error" = "info") => {
+  if (!ctx?.hasUI) return;
+  ctx.ui.notify(`Pi Dictate: ${message}`, type);
+};
+
+const renderRecord = (record: DictationRecord): string => {
+  const time = new Date(record.timestamp).toLocaleString();
+  return `Pi Dictate last transcript (${time})\n\nRaw transcript:\n${record.raw}\n\nCorrected message:\n${record.corrected}`;
+};
+
+const isDictationRecord = (value: unknown): value is DictationRecord => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.raw === "string" && typeof record.corrected === "string" && typeof record.timestamp === "number";
+};
+
+const isDictationEntry = (entry: { type: string; customType?: string }): entry is CustomEntry<DictationRecord> => {
+  return entry.type === "custom" && entry.customType === "pi-dictate";
+};
+
+export default function piDictateExtension(pi: ExtensionAPI) {
+  const config = loadConfig();
+  const inputIndicator = createInputIndicator(config.keybind);
+  let lastRecord: DictationRecord | undefined;
+
+  const controller = createController({
+    onModeChange: (mode) => inputIndicator.setMode(mode),
+    onRecord: (record) => {
+      lastRecord = record;
+      pi.appendEntry("pi-dictate", record);
+    },
+    notify,
+    sendUserMessage: (ctx, text) => {
+      if (ctx.isIdle()) pi.sendUserMessage(text);
+      else pi.sendUserMessage(text, { deliverAs: "followUp" });
+    },
+  });
+
+  pi.registerCommand("dictate-last", {
+    description: "Show the last raw dictation transcript and corrected message.",
+    handler: async (_args, ctx) => {
+      if (lastRecord) {
+        ctx.ui.notify(renderRecord(lastRecord), "info");
+        return;
+      }
+
+      const entry = [...ctx.sessionManager.getEntries()].reverse().find(isDictationEntry);
+      if (isDictationRecord(entry?.data)) {
+        ctx.ui.notify(renderRecord(entry.data), "info");
+        return;
+      }
+
+      ctx.ui.notify("No dictation transcript recorded yet.", "warning");
+    },
+  });
+
+  pi.registerCommand("dictate-status", {
+    description: "Show pi-dictate status and configuration.",
+    handler: async (_args, ctx) => {
+      const current = loadConfig();
+      ctx.ui.notify(`mode ${controller.getMode()} · keybind ${current.keybind} · endpoint ${current.sttEndpoint}`, "info");
+    },
+  });
+
+  pi.on("session_start", (_event, ctx) => {
+    if (!ctx.hasUI) return;
+    const previousEditor = ctx.ui.getEditorComponent();
+    ctx.ui.setEditorComponent(createDictateEditorFactory(previousEditor, {
+      keybind: loadConfig().keybind,
+      ctx,
+      getMode: () => controller.getMode(),
+      renderLabel: (theme) => inputIndicator.renderLabel(theme),
+      attachTui: (tui) => inputIndicator.attach(tui),
+      onToggle: (handlerCtx) => {
+        const action = controller.getMode() === "idle" ? controller.start(handlerCtx) : controller.stopInsert(handlerCtx);
+        void action.catch((error: unknown) => notify(handlerCtx, formatError(error), "error"));
+      },
+      onCancel: (handlerCtx) => {
+        void controller.cancel(handlerCtx).catch((error: unknown) => notify(handlerCtx, formatError(error), "error"));
+      },
+      onSend: (handlerCtx) => {
+        void controller.stopSend(handlerCtx).catch((error: unknown) => notify(handlerCtx, formatError(error), "error"));
+      },
+    }));
+  });
+
+  pi.on("session_shutdown", async () => {
+    await controller.dispose();
+    inputIndicator.dispose();
+  });
+}

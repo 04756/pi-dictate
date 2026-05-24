@@ -1,0 +1,102 @@
+# pi-dictate
+
+Local-first macOS voice dictation for Pi.
+
+`pi-dictate` records from the macOS microphone with `ffmpeg`, sends audio to a local Whisper/OpenAI-compatible transcription endpoint, rewrites the transcript with Pi's current model, then either inserts the corrected text into the editor or sends it to the agent.
+
+## Status
+
+Early macOS-only version.
+
+## Architecture
+
+The extension is intentionally split into small modules:
+
+- `src/audio/recorder.ts` - macOS `ffmpeg` recording to a temporary WAV file.
+- `src/stt/whisper.ts` - local OpenAI-compatible Whisper transcription client.
+- `src/rewrite/current-model.ts` - transcript rewrite using Pi's active model and auth.
+- `src/core/controller.ts` - dictation state machine (`idle`, `recording`, `processing`).
+- `src/ui/editor.ts` - editor wrapper, key handling, and status label.
+- `src/index.ts` - Pi extension wiring, commands, session persistence.
+
+This keeps provider support, recording, rewrite, and UI replaceable without rewriting the whole package.
+
+## Requirements
+
+- macOS
+- `ffmpeg`
+- A local OpenAI-compatible Whisper endpoint, for example `whisper-server` from `whisper.cpp`:
+
+```bash
+whisper-server \
+  --host 127.0.0.1 \
+  --port 10301 \
+  --model "$HOME/.local/share/whisper.cpp/models/ggml-small.bin" \
+  --inference-path /v1/audio/transcriptions \
+  --convert \
+  --language zh
+```
+
+## Install
+
+From a local checkout:
+
+```bash
+pi install /absolute/path/to/pi-dictate
+```
+
+After publishing:
+
+```bash
+pi install npm:pi-dictate@0.1.0
+```
+
+If you also have `pi-voice-stt` installed with the same keybinding, remove or disable it to avoid keybinding conflicts.
+
+## Usage
+
+Default keybinding: `ctrl+r`.
+
+- `ctrl+r` when idle: start recording.
+- `ctrl+r` while recording: stop, transcribe, rewrite, and insert corrected text into the editor.
+- `enter` while recording: stop, transcribe, rewrite, and send corrected text to Pi.
+- `escape` while recording: cancel.
+
+The user message shows only the corrected text. The raw Whisper transcript is saved as extension state.
+
+## Commands
+
+```text
+/dictate-status
+```
+
+Show current mode, keybinding, and STT endpoint.
+
+```text
+/dictate-last
+```
+
+Show the last raw transcript and corrected message.
+
+## Configuration
+
+Environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PI_DICTATE_KEYBIND` | `ctrl+r` | Dictation keybinding |
+| `PI_DICTATE_STT_ENDPOINT` | `http://localhost:10301/v1/audio/transcriptions` | OpenAI-compatible STT endpoint |
+| `PI_DICTATE_STT_MODEL` | `whisper-1` | STT model form field |
+| `PI_DICTATE_STT_LANGUAGE` | `zh` | STT language form field |
+| `PI_DICTATE_FFMPEG` | `ffmpeg` | ffmpeg executable |
+| `PI_DICTATE_INPUT_FORMAT` | `avfoundation` | ffmpeg input format |
+| `PI_DICTATE_INPUT` | `:0` | ffmpeg input device |
+| `PI_DICTATE_MAX_SECONDS` | `120` | Maximum recording duration |
+| `PI_DICTATE_REWRITE_MAX_TOKENS` | `1000` | Max tokens for rewrite call |
+
+## Security and privacy
+
+- Audio is sent only to the configured STT endpoint. The default is localhost.
+- Temporary WAV files are removed after transcription.
+- The rewrite step uses Pi's active model, so corrected transcript processing follows that model/provider's transport and data policy.
+- This package does not support remote STT providers in v1.
