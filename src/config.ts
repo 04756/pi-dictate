@@ -22,7 +22,7 @@ const integerFromEnv = (name: string, fallback: number): number => {
 
 export const loadConfig = (): DictateConfig => ({
   keybind: process.env.PI_DICTATE_KEYBIND?.trim() || "ctrl+r",
-  sttEndpoint: process.env.PI_DICTATE_STT_ENDPOINT?.trim() || "http://localhost:10301/v1/audio/transcriptions",
+  sttEndpoint: process.env.PI_DICTATE_STT_ENDPOINT?.trim() || "http://127.0.0.1:10301/v1/audio/transcriptions",
   sttModel: process.env.PI_DICTATE_STT_MODEL?.trim() || "whisper-1",
   sttLanguage: process.env.PI_DICTATE_STT_LANGUAGE?.trim() || "zh",
   ffmpegPath: process.env.PI_DICTATE_FFMPEG?.trim() || "ffmpeg",

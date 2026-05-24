@@ -85,7 +85,7 @@ Environment variables:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PI_DICTATE_KEYBIND` | `ctrl+r` | Dictation keybinding |
-| `PI_DICTATE_STT_ENDPOINT` | `http://localhost:10301/v1/audio/transcriptions` | OpenAI-compatible STT endpoint |
+| `PI_DICTATE_STT_ENDPOINT` | `http://127.0.0.1:10301/v1/audio/transcriptions` | OpenAI-compatible STT endpoint |
 | `PI_DICTATE_STT_MODEL` | `whisper-1` | STT model form field |
 | `PI_DICTATE_STT_LANGUAGE` | `zh` | STT language form field |
 | `PI_DICTATE_FFMPEG` | `ffmpeg` | ffmpeg executable |
