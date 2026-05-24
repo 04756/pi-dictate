@@ -1,6 +1,8 @@
 import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { loadConfig } from "./config";
+import { CONFIG_PATH, loadConfig } from "./config";
 import { createController, type DictationRecord } from "./core/controller";
+import { formatDoctorResults, runDoctor } from "./doctor";
+import { renderServerPresets } from "./server-presets";
 import { createDictateEditorFactory, createInputIndicator } from "./ui/editor";
 import { formatError } from "./utils";
 
@@ -70,7 +72,22 @@ export default function piDictateExtension(pi: ExtensionAPI) {
     description: "Show pi-dictate status and configuration.",
     handler: async (_args, ctx) => {
       const current = loadConfig();
-      ctx.ui.notify(`mode ${controller.getMode()} · keybind ${current.keybind} · endpoint ${current.sttEndpoint}`, "info");
+      ctx.ui.notify(`mode ${controller.getMode()} · keybind ${current.keybind} · endpoint ${current.sttEndpoint} · config ${CONFIG_PATH}`, "info");
+    },
+  });
+
+  pi.registerCommand("dictate-config", {
+    description: "Show pi-dictate config path and recommended whisper-server presets.",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(`Config file: ${CONFIG_PATH}\n\nWhisper server presets:\n\n${renderServerPresets()}`, "info");
+    },
+  });
+
+  pi.registerCommand("dictate-doctor", {
+    description: "Check pi-dictate platform, config, and local Whisper endpoint.",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify("Running pi-dictate doctor…", "info");
+      ctx.ui.notify(formatDoctorResults(await runDoctor(loadConfig())), "info");
     },
   });
 

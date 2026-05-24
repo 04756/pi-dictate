@@ -15,7 +15,7 @@ The extension is intentionally split into small modules:
 - `src/audio/recorder.ts` - macOS `ffmpeg` recording to a temporary WAV file.
 - `src/stt/whisper.ts` - local OpenAI-compatible Whisper transcription client.
 - `src/rewrite/current-model.ts` - transcript rewrite using Pi's active model and auth.
-- `src/core/controller.ts` - dictation state machine (`idle`, `recording`, `processing`).
+- `src/core/controller.ts` - dictation state machine (`idle`, `recording`, `transcribing`, `rewriting`).
 - `src/ui/editor.ts` - editor wrapper, key handling, and status label.
 - `src/index.ts` - Pi extension wiring, commands, session persistence.
 
@@ -25,17 +25,41 @@ This keeps provider support, recording, rewrite, and UI replaceable without rewr
 
 - macOS
 - `ffmpeg`
-- A local OpenAI-compatible Whisper endpoint, for example `whisper-server` from `whisper.cpp`:
+- A local OpenAI-compatible Whisper endpoint, for example `whisper-server` from `whisper.cpp`.
+
+## Recommended whisper-server presets
+
+Fastest, lower accuracy:
 
 ```bash
-whisper-server \
-  --host 127.0.0.1 \
-  --port 10301 \
+whisper-server --host 127.0.0.1 --port 10301 \
+  --model "$HOME/.local/share/whisper.cpp/models/ggml-tiny.bin" \
+  --inference-path /v1/audio/transcriptions \
+  --convert --language zh \
+  --threads 8 --no-timestamps --best-of 1 --no-fallback
+```
+
+Balanced default:
+
+```bash
+whisper-server --host 127.0.0.1 --port 10301 \
+  --model "$HOME/.local/share/whisper.cpp/models/ggml-base.bin" \
+  --inference-path /v1/audio/transcriptions \
+  --convert --language zh \
+  --threads 8 --no-timestamps --best-of 1 --no-fallback
+```
+
+More accurate, slower:
+
+```bash
+whisper-server --host 127.0.0.1 --port 10301 \
   --model "$HOME/.local/share/whisper.cpp/models/ggml-small.bin" \
   --inference-path /v1/audio/transcriptions \
-  --convert \
-  --language zh
+  --convert --language zh \
+  --threads 8 --no-timestamps --best-of 1 --no-fallback
 ```
+
+Use `/dictate-config` inside Pi to show these presets.
 
 ## Install
 
@@ -70,7 +94,7 @@ The user message shows only the corrected text. The raw Whisper transcript, rewr
 /dictate-status
 ```
 
-Show current mode, keybinding, and STT endpoint.
+Show current mode, keybinding, STT endpoint, and config file path.
 
 ```text
 /dictate-last
@@ -78,9 +102,51 @@ Show current mode, keybinding, and STT endpoint.
 
 Show the last raw transcript, corrected message, rewrite error if any, and stage timings.
 
+```text
+/dictate-config
+```
+
+Show config file path and recommended `whisper-server` presets.
+
+```text
+/dictate-doctor
+```
+
+Check platform, current config, and whether the local Whisper endpoint is reachable.
+
 ## Configuration
 
-Environment variables:
+Configuration file:
+
+```text
+~/.pi-dictate/config.json
+```
+
+Example:
+
+```json
+{
+  "keybind": "ctrl+r",
+  "stt": {
+    "endpoint": "http://127.0.0.1:10301/v1/audio/transcriptions",
+    "model": "whisper-1",
+    "language": "zh"
+  },
+  "audio": {
+    "ffmpegPath": "ffmpeg",
+    "inputFormat": "avfoundation",
+    "input": ":0",
+    "sampleRate": 16000,
+    "channels": 1,
+    "maxSeconds": 120
+  },
+  "rewrite": {
+    "maxTokens": 1000
+  }
+}
+```
+
+Environment variables override the config file:
 
 | Variable | Default | Description |
 | --- | --- | --- |
