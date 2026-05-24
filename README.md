@@ -62,7 +62,7 @@ Default keybinding: `ctrl+r`.
 - `enter` while recording: stop, transcribe, rewrite, and send corrected text to Pi.
 - `escape` while recording: cancel.
 
-The user message shows only the corrected text. The raw Whisper transcript is saved as extension state.
+The user message shows only the corrected text. The raw Whisper transcript, rewrite result, and stage timings are saved as extension state. STT network failures are retried automatically. If transcription succeeds but rewrite fails, the raw transcript is inserted into the editor as a recoverable fallback.
 
 ## Commands
 
@@ -76,7 +76,7 @@ Show current mode, keybinding, and STT endpoint.
 /dictate-last
 ```
 
-Show the last raw transcript and corrected message.
+Show the last raw transcript, corrected message, rewrite error if any, and stage timings.
 
 ## Configuration
 

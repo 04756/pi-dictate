@@ -6,10 +6,20 @@ import { transcribe } from "../stt/whisper";
 
 export type DictateMode = "idle" | "recording" | "transcribing" | "rewriting";
 
+export type DictationTimings = {
+  recordingMs: number;
+  transcribingMs: number;
+  rewritingMs: number;
+  totalMs: number;
+};
+
 export type DictationRecord = {
   raw: string;
   corrected: string;
   timestamp: number;
+  timings: DictationTimings;
+  rewriteFailed?: boolean;
+  rewriteError?: string;
 };
 
 type StopAction = "insert" | "send";
@@ -27,6 +37,7 @@ export const createController = (options: ControllerOptions) => {
   let lastContext: ExtensionContext | undefined;
   let operation: Promise<void> | undefined;
   let disposed = false;
+  let recordingStartedAt = 0;
 
   const remember = (ctx: ExtensionContext | undefined) => {
     if (ctx) lastContext = ctx;
@@ -64,6 +75,7 @@ export const createController = (options: ControllerOptions) => {
     const config = loadConfig();
     const active = startRecording(config);
     recording = active;
+    recordingStartedAt = Date.now();
     active.timeout = setTimeout(() => {
       if (!recording || disposed) return;
       const timeoutContext = lastContext;
@@ -88,15 +100,50 @@ export const createController = (options: ControllerOptions) => {
 
     const currentOperation = (async () => {
       const config = loadConfig();
+      const totalStartedAt = Date.now();
+      const recordingMs = recordingStartedAt > 0 ? totalStartedAt - recordingStartedAt : 0;
       try {
         options.notify(ctx, "Transcribing…");
+        const transcribingStartedAt = Date.now();
         const audioPath = await active.stop();
         const raw = (await transcribe(audioPath, config, ctx.signal)).text;
+        const transcribingMs = Date.now() - transcribingStartedAt;
+
         setMode("rewriting", ctx);
         options.notify(ctx, "Rewriting…");
-        const corrected = await rewriteTranscript(raw, ctx, config);
-        const record = { raw, corrected, timestamp: Date.now() } satisfies DictationRecord;
+        const rewritingStartedAt = Date.now();
+        let corrected = raw;
+        let rewriteFailed = false;
+        let rewriteError: string | undefined;
+        try {
+          corrected = await rewriteTranscript(raw, ctx, config);
+        } catch (error) {
+          rewriteFailed = true;
+          rewriteError = error instanceof Error ? error.message : String(error);
+        }
+        const rewritingMs = Date.now() - rewritingStartedAt;
+        const record = {
+          raw,
+          corrected,
+          timestamp: Date.now(),
+          timings: {
+            recordingMs,
+            transcribingMs,
+            rewritingMs,
+            totalMs: Date.now() - totalStartedAt + recordingMs,
+          },
+          rewriteFailed,
+          rewriteError,
+        } satisfies DictationRecord;
         options.onRecord(record);
+
+        if (rewriteFailed) {
+          const current = ctx.ui.getEditorText();
+          const separator = current && !current.endsWith(" ") && !current.endsWith("\n") ? " " : "";
+          ctx.ui.setEditorText(`${current}${separator}${raw}`);
+          options.notify(ctx, `Rewrite failed; inserted raw transcript. ${rewriteError ?? ""}`.trim(), "warning");
+          return;
+        }
 
         if (action === "send") {
           options.sendUserMessage(ctx, corrected);

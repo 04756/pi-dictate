@@ -9,9 +9,15 @@ const notify = (ctx: ExtensionContext | undefined, message: string, type: "info"
   ctx.ui.notify(`Pi Dictate: ${message}`, type);
 };
 
+const formatDuration = (ms: number): string => `${(ms / 1000).toFixed(2)}s`;
+
 const renderRecord = (record: DictationRecord): string => {
   const time = new Date(record.timestamp).toLocaleString();
-  return `Pi Dictate last transcript (${time})\n\nRaw transcript:\n${record.raw}\n\nCorrected message:\n${record.corrected}`;
+  const timings = record.timings
+    ? `\n\nTimings:\nrecording: ${formatDuration(record.timings.recordingMs)}\ntranscribing: ${formatDuration(record.timings.transcribingMs)}\nrewriting: ${formatDuration(record.timings.rewritingMs)}\ntotal: ${formatDuration(record.timings.totalMs)}`
+    : "";
+  const rewriteStatus = record.rewriteFailed ? `\n\nRewrite failed:\n${record.rewriteError ?? "unknown error"}` : "";
+  return `Pi Dictate last transcript (${time})\n\nRaw transcript:\n${record.raw}\n\nCorrected message:\n${record.corrected}${rewriteStatus}${timings}`;
 };
 
 const isDictationRecord = (value: unknown): value is DictationRecord => {
