@@ -126,7 +126,8 @@ class DictateEditorWrapper implements EditorComponent {
 }
 
 const RECORDING_PULSES = ["●", "●", "●", "·"];
-const PROCESSING_FRAMES = ["•  ", " • ", "  •", " • "];
+const TRANSCRIBING_FRAMES = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
+const REWRITING_FRAMES = ["•  ", " • ", "  •", " • "];
 
 export const createInputIndicator = (keybind: string) => {
   let mode: DictateMode = "idle";
@@ -169,8 +170,12 @@ export const createInputIndicator = (keybind: string) => {
         const pulse = RECORDING_PULSES[tick % RECORDING_PULSES.length] ?? "●";
         return `${theme.fg("accent", pulse)} ${theme.fg("muted", "dictating")} ${theme.fg("dim", "· enter send · esc cancel")}`;
       }
-      if (mode === "processing") {
-        const frame = PROCESSING_FRAMES[tick % PROCESSING_FRAMES.length] ?? "…";
+      if (mode === "transcribing") {
+        const frame = TRANSCRIBING_FRAMES[tick % TRANSCRIBING_FRAMES.length] ?? "…";
+        return `${theme.fg("accent", frame)} ${theme.fg("muted", "transcribing")} ${theme.fg("dim", "· wait")}`;
+      }
+      if (mode === "rewriting") {
+        const frame = REWRITING_FRAMES[tick % REWRITING_FRAMES.length] ?? "…";
         return `${theme.fg("accent", frame)} ${theme.fg("muted", "rewriting")} ${theme.fg("dim", "· wait")}`;
       }
       return `${theme.fg("dim", "dictate")} ${theme.fg("accent", keybind)}`;

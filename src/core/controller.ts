@@ -4,7 +4,7 @@ import { loadConfig } from "../config";
 import { rewriteTranscript } from "../rewrite/current-model";
 import { transcribe } from "../stt/whisper";
 
-export type DictateMode = "idle" | "recording" | "processing";
+export type DictateMode = "idle" | "recording" | "transcribing" | "rewriting";
 
 export type DictationRecord = {
   raw: string;
@@ -50,7 +50,7 @@ export const createController = (options: ControllerOptions) => {
       options.notify(ctx, "Dictation cancelled.");
       return;
     }
-    options.notify(ctx, mode === "processing" ? "Dictation is already processing and cannot be cancelled yet." : "No active dictation.", "warning");
+    options.notify(ctx, mode === "transcribing" || mode === "rewriting" ? "Dictation is already processing and cannot be cancelled yet." : "No active dictation.", "warning");
   };
 
   const start = async (ctx: ExtensionContext) => {
@@ -79,19 +79,21 @@ export const createController = (options: ControllerOptions) => {
   const stop = async (ctx: ExtensionContext, action: StopAction) => {
     remember(ctx);
     if (!recording) return;
-    if (mode === "processing") return;
+    if (mode === "transcribing" || mode === "rewriting") return;
 
     const active = recording;
     recording = undefined;
     if (active.timeout) clearTimeout(active.timeout);
-    setMode("processing", ctx);
+    setMode("transcribing", ctx);
 
     const currentOperation = (async () => {
       const config = loadConfig();
       try {
-        options.notify(ctx, "Transcribing and rewriting…");
+        options.notify(ctx, "Transcribing…");
         const audioPath = await active.stop();
         const raw = (await transcribe(audioPath, config, ctx.signal)).text;
+        setMode("rewriting", ctx);
+        options.notify(ctx, "Rewriting…");
         const corrected = await rewriteTranscript(raw, ctx, config);
         const record = { raw, corrected, timestamp: Date.now() } satisfies DictationRecord;
         options.onRecord(record);
