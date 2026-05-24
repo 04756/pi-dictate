@@ -15,6 +15,8 @@ export type DictateConfig = {
   maxSeconds: number;
   minBytes: number;
   rewriteMaxTokens: number;
+  /** Optional: specific model for rewrite (provider/id or just id). Falls back to current model if not set. */
+  rewriteModel?: string;
   /** Optional override: temperature for the rewrite call (provider-dependent) */
   rewriteTemperature?: number;
   /** Optional override: reasoning level for the rewrite call (provider-dependent) */
@@ -40,6 +42,7 @@ type ConfigFile = {
     minBytes?: number;
   };
   rewrite?: {
+    model?: string;
     maxTokens?: number;
     temperature?: number;
     reasoning?: string;
@@ -82,9 +85,10 @@ const parseConfigFile = (value: unknown): ConfigFile => {
       minBytes: optionalPositiveInteger(audio.minBytes),
     },
     rewrite: {
+      model: optionalString(rewrite.model),
       maxTokens: optionalPositiveInteger(rewrite.maxTokens),
-    temperature: typeof rewrite.temperature === "number" ? rewrite.temperature : undefined,
-    reasoning: optionalString(rewrite.reasoning),
+      temperature: typeof rewrite.temperature === "number" ? rewrite.temperature : undefined,
+      reasoning: optionalString(rewrite.reasoning),
     },
   };
 };
@@ -117,6 +121,7 @@ export const loadConfig = (): DictateConfig => {
     channels: integerFromEnv("PI_DICTATE_CHANNELS", file.audio?.channels ?? 1),
     maxSeconds: integerFromEnv("PI_DICTATE_MAX_SECONDS", file.audio?.maxSeconds ?? 120),
     minBytes: integerFromEnv("PI_DICTATE_MIN_BYTES", file.audio?.minBytes ?? 4096),
+    rewriteModel: stringFromEnv("PI_DICTATE_REWRITE_MODEL", file.rewrite?.model ?? "") || undefined,
     rewriteMaxTokens: integerFromEnv("PI_DICTATE_REWRITE_MAX_TOKENS", file.rewrite?.maxTokens ?? 1000),
     rewriteTemperature: file.rewrite?.temperature,
     rewriteReasoning: file.rewrite?.reasoning,

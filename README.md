@@ -166,6 +166,7 @@ Config file rewrite overrides:
 
 | Field | Type | Description |
 | --- | --- | --- |
+| `rewrite.model` | string | Specific model for rewrite (`provider/id` or just `id`). Falls back to current model if not set. |
 | `rewrite.temperature` | number | Override rewrite temperature per-provider default |
 | `rewrite.reasoning` | string | Override rewrite reasoning level (`minimal`/`low`/`medium`/`high`/`xhigh`)
 
